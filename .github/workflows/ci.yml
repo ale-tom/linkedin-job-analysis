@@ -1,0 +1,52 @@
+
+# This is a GitHub Actions workflow file that sets up a CI pipeline for a Python project.
+# It runs on pushes and pull requests to the master branch.
+# The workflow includes the following steps:
+# 1. Checks out the repository.
+# 2. Sets up Python 3.8.
+# 3. Installs the required dependencies from requirements.txt.
+# 4. Installs pytest.
+# 5. Runs the tests using pytest with options to stop after the first failure and disable warnings.
+# 6. Runs flake8 for linting with specific configurations:
+#    - Sets the maximum line length to 120 characters.
+#    - Sets the maximum complexity to 10.
+#    - Excludes certain directories from linting (e.g., .git, venv, build, dist).
+# 7. The workflow is triggered on pushes and pull requests to the master branch.
+
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.8"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+          pip install pytest flake8
+
+      - name: Run flake8 linting
+        run: |
+          flake8 .
+          flake8 --max-line-length=120
+          flake8 --max-complexity=10
+          flake8 --exclude=.git,venv,build,dist
+      - name: Run tests
+        run: |
+          pytest --maxfail=1 --disable-warnings -q
