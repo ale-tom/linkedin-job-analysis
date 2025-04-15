@@ -1,5 +1,4 @@
 # README
-Some text
 
 [![Build Status](https://github.com/ale-tom/linkedin-job-analysis/actions/workflows/ci.yml/badge.svg)](https://github.com/ale-tom/linkedin-job-analysis/actions)
 [![Coverage Status](https://coveralls.io/repos/github/ale-tom/linkedin-job-analysis/badge.svg?branch=master)](https://coveralls.io/github/ale-tom/linkedin-job-analysis?branch=master)
