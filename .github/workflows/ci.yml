@@ -48,5 +48,7 @@ jobs:
           flake8 --max-complexity=10
           flake8 --exclude=.git,venv,build,dist
       - name: Run tests
+        env:
+          PYTHONPATH: ./src      
         run: |
           pytest --maxfail=1 --disable-warnings -q
