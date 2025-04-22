@@ -3,9 +3,10 @@ import re
 import json
 from dotenv import load_dotenv
 import time
-from typing import List, Dict
+from typing import List, Dict, Set
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import NoSuchElementException
 from bs4 import BeautifulSoup
 import pandas as pd
 
@@ -26,25 +27,38 @@ def login_to_linkedin(driver: webdriver.Chrome, username: str, password: str) ->
     time.sleep(3)
 
 
-# TODO: Extract the saved job URLs from different pages
 def extract_saved_job_urls(driver: webdriver.Chrome) -> List[str]:
     """
-    Extract URLs of saved jobs from the LinkedIn saved jobs page.
+    Open the LinkedIn saved jobs page, then walk through each page
+    via the 'Next' button, collecting all '/jobs/view/' links.
     """
     saved_jobs_url = "https://www.linkedin.com/my-items/saved-jobs/"
     driver.get(saved_jobs_url)
     time.sleep(3)
-    page_soup = BeautifulSoup(driver.page_source, "html.parser")
+    job_links: Set[str] = set()  # Set to avoid duplicates
+    # Loop until there are no more pages
+    while True:
+        soup = BeautifulSoup(driver.page_source, "html.parser")
 
-    job_links = []
-    # This selector relies on LinkedIn's current DOM structure - it may need to be updated if LinkedIn changes their
-    # layout.
-    for a_tag in page_soup.find_all("a", href=True):  # Find all anchor tags
-        # Check if the href contains the job view path
-        href = a_tag["href"]
-        if "/jobs/view/" in href:
-            job_links.append(href)
-    return list(set(job_links))  # Remove duplicates
+        # collect any job‑view links on this page
+        for a_tag in soup.find_all("a", href=True):
+            href = a_tag["href"]
+            if "/jobs/view/" in href:
+                # strip tracking/query params if present
+                job_links.add(href.split("?")[0])
+
+        # attempt to click the “Next” pagination button
+        try:
+            # This XPath selects the button with aria-label 'Next' that is not disabled
+            next_btn = driver.find_element(
+                By.XPATH, "//button[@aria-label='Next' and not(@disabled)]"
+            )
+            next_btn.click()  # Click the button to go to the next page
+            time.sleep(3)
+        except (NoSuchElementException, Exception):
+            # no enabled Next button → we're done
+            break
+    return list(job_links)
 
 
 # TODO: Extract the job title and other details
@@ -74,7 +88,7 @@ def extract_job_requirements(
     heading_pattern = re.compile(
         r"(?:(?:Person Specification|.*Requirements.*|.*Qualifications.*|"
         r"Nice to Have|What You'll Need| A Plus If You Also Have|.*Advantageous.*|"
-        r".*You to Have.*|Your Experience|.*Experience.*|.*Qualifications.*|",
+        r".*You to Have.*|Your Experience|.*Experience.*|.*Qualifications.*|"
         r".*Bonus.*|.*Looking for.*|.*Must Have.*|.*Bring.*|.*If You.*|.*You Are.*|"
         r".*You Should Have.*|About You|Your Experience)|.*Skills.*)",
         re.IGNORECASE,
