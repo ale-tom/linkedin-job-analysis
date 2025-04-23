@@ -1,6 +1,7 @@
 import time
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
+
 from scraper import (
     login_to_linkedin,
     extract_saved_job_urls,
@@ -152,6 +153,13 @@ def test_extract_saved_job_urls_multiple_pages(monkeypatch):
 
 def test_extract_job_requirements(monkeypatch):
     html = """
+    <div class="job-details-jobs-unified-top-card__tertiary-description-container">
+      <span class="tvm__text tvm__text--low-emphasis">Cambridge, England, United Kingdom</span>
+      <span class="tvm__text tvm__text--low-emphasis">·</span>
+      <span class="tvm__text tvm__text--low-emphasis">1 week ago</span>
+      <span class="tvm__text tvm__text--low-emphasis">·</span>
+      <span class="tvm__text tvm__text--low-emphasis">43 people clicked apply</span>
+    </div>
     <div class="job-details-about-the-job-module__description">
       <strong>Person Specification</strong>
       <ul>
@@ -185,13 +193,21 @@ def test_extract_job_requirements(monkeypatch):
     monkeypatch.setattr(time, "sleep", lambda _: None)
 
     result = extract_job_requirements(driver, "https://job.url/1")
+
     # ensure driver.get was called correctly
+    assert result  # non-empty dict
     assert driver.requested == ["https://job.url/1"]
 
-    # Only the two matching headings should be present
-    assert "Person Specification" in result
-    assert "General Skills" in result
-    assert "Unrelated Heading" not in result
+    # Top-card fields
+    assert result["location"] == "Cambridge, England, United Kingdom"
+    assert result["posted"] == "1 week ago"
+    assert result["num_applicants"] == "43 people clicked apply"
 
-    assert result["Person Specification"] == ["Requirement one.", "Requirement two."]
-    assert result["General Skills"] == ["Skill A"]
+    # Requirements mapping
+    reqs = result["requirements"]
+    assert "Person Specification" in reqs
+    assert "General Skills" in reqs
+    assert "Unrelated Heading" not in reqs
+
+    assert reqs["Person Specification"] == ["Requirement one.", "Requirement two."]
+    assert reqs["General Skills"] == ["Skill A"]
