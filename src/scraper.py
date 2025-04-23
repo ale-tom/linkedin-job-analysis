@@ -3,11 +3,11 @@ import re
 import json
 from dotenv import load_dotenv
 import time
-from typing import List, Dict, Set
+from typing import Any, List, Dict, Set
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 import pandas as pd
 
 load_dotenv()  # Load environment variables from .env file
@@ -61,52 +61,72 @@ def extract_saved_job_urls(driver: webdriver.Chrome) -> List[str]:
     return list(job_links)
 
 
-# TODO: Extract the job title and other details
-def extract_job_requirements(
-    driver: webdriver.Chrome, job_url: str
-) -> Dict[str, List[str]]:
+def extract_job_requirements(driver: webdriver.Chrome, job_url: str) -> Dict[str, Any]:
     """
-    Navigate to the given job_url, wait for it to load, and extract any
-    requirement sections (e.g. "Person Specification", "Requirements",
-    "Qualifications", "Skills", "Preferred Qualifications") as a mapping
-    from heading to list of bullet points.
+    Navigate to job_url, wait for load, then extract:
+      • location: from the top-card tertiary description container
+      • posted: e.g. "1 week ago"
+      • num_applicants: e.g. "43 people clicked apply"
+      • requirements: mapping of any requirement-style headings to their bullets
     """
-    # Navigate to the job URL
     driver.get(job_url)
-    # Wait for the page to load and parse the HTML
-    # This is an arbitrary value and may need to be adjusted based on the actual loading time of the page
     time.sleep(3)
-    page_soup = BeautifulSoup(driver.page_source, "html.parser")
+    soup = BeautifulSoup(driver.page_source, "html.parser")
 
-    sections: Dict[str, List[str]] = {}
-    container = page_soup.find(
-        "div", class_="job-details-about-the-job-module__description"
+    info: Dict[str, Any] = {
+        "location": "",
+        "posted": "",
+        "num_applicants": "",
+        "requirements": {},
+    }
+
+    # 1) Top-card tertiary info
+    top = soup.find(
+        "div",
+        class_="job-details-jobs-unified-top-card__tertiary-description-container",
     )
-    if not container:
-        return sections
+    if top:
+        # collect each low-emphasis span, skipping the “·” separators
+        parts = [
+            span.get_text(strip=True)
+            for span in top.find_all("span", class_="tvm__text tvm__text--low-emphasis")
+            if span.get_text(strip=True) != "·"
+        ]
+        if len(parts) > 0:
+            info["location"] = parts[0]
+        if len(parts) > 1:
+            info["posted"] = parts[1]
+        if len(parts) > 2:
+            info["num_applicants"] = parts[2]
 
-    heading_pattern = re.compile(
-        r"(?:(?:Person Specification|.*Requirements.*|.*Qualifications.*|"
-        r"Nice to Have|What You'll Need| A Plus If You Also Have|.*Advantageous.*|"
-        r".*You to Have.*|Your Experience|.*Experience.*|.*Qualifications.*|"
-        r".*Bonus.*|.*Looking for.*|.*Must Have.*|.*Bring.*|.*If You.*|.*You Are.*|"
-        r".*You Should Have.*|About You|Your Experience)|.*Skills.*)",
-        re.IGNORECASE,
-    )
+    # 2) Requirements sections
+    container = soup.find("div", class_="job-details-about-the-job-module__description")
+    if container:
+        heading_pattern = re.compile(
+            r"(?:(?:Person Specification|.*Requirements.*|.*Qualifications.*|"
+            r"Nice to Have|What You'll Need|A Plus If You Also Have|.*Advantageous.*|"
+            r".*You to Have.*|Your Experience|.*Experience.*|.*Qualifications.*|"
+            r".*Bonus.*|.*Looking for.*|.*Must Have.*|.*Bring.*|.*If You.*|.*You Are.*|"
+            r".*You Should Have.*|About You|Your Experience)|.*Skills.*)",
+            re.IGNORECASE,
+        )
+        sections: Dict[str, List[str]] = {}
 
-    for strong in container.find_all("strong"):
-        heading = strong.get_text(strip=True)
-        if heading_pattern.fullmatch(heading):
-            # Try to find a <ul> immediately after the <strong> in the DOM
+        for strong in container.find_all("strong"):
+            heading = strong.get_text(strip=True)
+            if not heading_pattern.fullmatch(heading):
+                continue
+
+            # look for the very next <ul> in the DOM
             ul = None
             sib = strong.next_sibling
             while sib:
-                if getattr(sib, "name", None) == "ul":
+                if isinstance(sib, Tag) and sib.name == "ul":
                     ul = sib
                     break
                 sib = sib.next_sibling
 
-            # Fallback: look anywhere after the <strong> for the next <ul>
+            # fallback: anywhere after the <strong>
             if not ul:
                 ul = strong.find_next("ul")
 
@@ -114,7 +134,9 @@ def extract_job_requirements(
                 items = [li.get_text(strip=True) for li in ul.find_all("li")]
                 sections[heading] = items
 
-    return sections
+        info["requirements"] = sections
+
+    return info
 
 
 def main():
@@ -137,17 +159,22 @@ def main():
         login_to_linkedin(driver, username, password)
         job_urls = extract_saved_job_urls(driver)
 
-        data = []
+        rows = []
         for url in job_urls:
-            sections = extract_job_requirements(driver, url)
-            data.append(
+            info = extract_job_requirements(driver, url)
+            rows.append(
                 {
                     "job_url": url,
-                    "requirements": json.dumps(sections, ensure_ascii=False),
+                    "posted": info["posted"],
+                    "location": info["location"],
+                    "num_applicants": info["num_applicants"],
+                    "requirements": json.dumps(
+                        info["requirements"], ensure_ascii=False
+                    ),
                 }
             )
 
-        df = pd.DataFrame(data)
+        df = pd.DataFrame(rows)
         df.to_csv("linkedin_job_requirements.csv", index=False)
     finally:
         driver.quit()
