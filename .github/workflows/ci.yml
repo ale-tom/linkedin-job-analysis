@@ -3,7 +3,7 @@
 # It runs on pushes and pull requests to the master branch.
 # The workflow includes the following steps:
 # 1. Checks out the repository.
-# 2. Sets up Python 3.8.
+# 2. Sets up Python 3.12.
 # 3. Installs the required dependencies from requirements.txt.
 # 4. Installs pytest.
 # 5. Runs the tests using pytest with options to stop after the first failure and disable warnings.
@@ -33,7 +33,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
       - name: Install dependencies
         run: |

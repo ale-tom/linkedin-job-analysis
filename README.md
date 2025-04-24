@@ -3,7 +3,7 @@
 [![Build Status](https://github.com/ale-tom/linkedin-job-analysis/actions/workflows/ci.yml/badge.svg)](https://github.com/ale-tom/linkedin-job-analysis/actions)
 [![Coverage Status](https://coveralls.io/repos/github/ale-tom/linkedin-job-analysis/badge.svg?branch=main)](https://coveralls.io/github/ale-tom/linkedin-job-analysis?branch=main)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python Version](https://img.shields.io/badge/Python-3.13.3%2B-blue.svg)](https://www.python.org)
+[![Python Version](https://img.shields.io/badge/Python-3.12.10%2B-blue.svg)](https://www.python.org)
 [![Repo Size](https://img.shields.io/github/repo-size/ale-tom/linkedin-job-analysis)](https://github.com/ale-tom/linkedin-job-analysis)
 
 
