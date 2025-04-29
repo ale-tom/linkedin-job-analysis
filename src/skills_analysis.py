@@ -1,23 +1,19 @@
 import ast
 import re
 from collections import Counter
-from typing import List
+from typing import List, Dict, Optional, Set
 
 import pandas as pd
 import numpy as np
 import spacy
-import matplotlib.pyplot as plt
 from spacy.lang.en.stop_words import STOP_WORDS
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics.pairwise import cosine_distances
+from difflib import SequenceMatcher
 
-# Load spaCy model for noun chunk extraction and embeddings
+# Load spaCy model for noun chunk extraction, normalisation and embeddings
 nlp = spacy.load("en_core_web_md")
-
-
-def embed_phrases(phrases: List[str]) -> np.ndarray:
-    return np.vstack([nlp(p).vector for p in phrases])
 
 
 # Generic exclusion phrases
@@ -42,6 +38,232 @@ _EXCLUDE_PHRASES = {
     "phdmasters",
     "vllm",
 }
+
+
+def load_skill_ontologies() -> Dict[str, List[str]]:
+    """
+    Return a mapping from macro-area names to lists of curated skill keywords.
+
+    The ontologies cover key domains in data science and engineering:
+    - Data Science practices
+    - ML techniques
+    - Statistical techniques
+    - ML frameworks
+    - DevOps
+    - MLOps
+    - Cloud platforms and services
+    - Programming languages
+    """
+    ontologies: Dict[str, List[str]] = {
+        "data_science_practices": [
+            "data cleansing",
+            "data preprocessing",
+            "data wrangling",
+            "feature engineering",
+            "exploratory analysis",
+            "visualization",
+            "evaluation",
+            "training",
+            "monitoring",
+            "cross-validation",
+            "a/b testing",
+            "pipeline development",
+        ],
+        "ml_techniques": [
+            "supervised learning",
+            "unsupervised learning",
+            "reinforcement learning",
+            "classification",
+            "regression",
+            "clustering",
+            "dimensionality reduction",
+            "anomaly detection",
+            "recommendation systems",
+            "time series forecasting",
+            "natural language processing",
+            "nlp",
+            "cnn",
+            "rnn",
+            "lstm",
+            "computer vision",
+            "deep learning",
+            "transfer learning",
+            "generative models",
+            "ensemble methods",
+            "active learning",
+            "semi-supervised learning",
+            "multi-task learning",
+            "meta-learning",
+            "federated learning",
+            "graph neural networks",
+            "self-supervised learning",
+            "contrastive learning",
+            "attention mechanisms",
+            "transformer",
+            "diffusion",
+        ],
+        "statistical_techniques": [
+            "hypothesis testing",
+            "probability distributions",
+            "statistical inference",
+            "bayesian",
+            "experimental design",
+            "multivariate",
+            "confidence intervals",
+            "correlation",
+            "survival",
+            "time series",
+            "signal processing",
+            "causal inference",
+        ],
+        "ml_frameworks": [
+            "tensorflow",
+            "pytorch",
+            "scikit learn",
+            "keras",
+            "xgboost",
+            "lightgbm",
+            "catboost",
+            "fastai",
+            "h2o",
+            "mlpack",
+            "shogun",
+        ],
+        "devops": [
+            "docker",
+            "kubernetes",
+            "ci/cd",
+            "terraform",
+            "ansible",
+            "jenkins",
+            "circleci",
+            "github actions",
+            "helm",
+            "prometheus",
+            "grafana",
+            "vault",
+        ],
+        "mlops": [
+            "mlflow",
+            "kubeflow",
+            "airflow",
+            "seldon",
+            "tensorboard",
+            "pachyderm",
+            "dvc",
+            "neptune",
+            "clearml",
+            "dagster",
+            "feast",
+            "bentoml",
+        ],
+        "cloud": [
+            "aws",
+            "azure",
+            "gcp",
+            "s3",
+            "ec2",
+            "lambda",
+            "bigquery",
+            "databricks",
+            "redshift",
+            "emr",
+            "cloudformation",
+            "azure ml",
+        ],
+        "programming_languages": [
+            "python",
+            "r language",
+            "java",
+            "scala",
+            "sql",
+            "c++ language",
+            "c# language",
+            "go language",
+            "javascript",
+            "bash",
+            "ruby",
+            "matlab",
+        ],
+    }
+    return ontologies
+
+
+def embed_phrases(phrases: List[str]) -> np.ndarray:
+    return np.vstack([nlp(p).vector for p in phrases])
+
+
+def _normalise(term: str) -> str:
+    """
+    Lowercase, strip out punctuation, collapse whitespace.
+    """
+    t = term.strip().lower()
+    t = re.sub(r"[^a-z0-9\s]+", "", t)
+    t = re.sub(r"\s+", " ", t)
+    return t
+
+
+def filter_by_ontologies(
+    cleaned_phrases: List[List[str]],
+    ontologies: Dict[str, List[str]],
+    fuzzy_threshold: Optional[float] = None,
+) -> List[List[str]]:
+    """
+    Keep only those phrases whose normalized form appears in your ontologies (exactly),
+    or (if fuzzy_threshold is set) whose embedding similarity to any ontology term
+    exceeds that threshold.
+    """
+    # Build normalized-truth set
+    canonical: Set[str] = {
+        _normalise(term) for terms in ontologies.values() for term in terms
+    }
+
+    # Precompute embeddings if we need fuzzy matching
+    ont_terms = list(canonical)
+    if fuzzy_threshold is not None:
+        ont_embeds = np.vstack([nlp(t).vector for t in ont_terms])
+
+    out: List[List[str]] = []
+    for phrases in cleaned_phrases:
+        keep: List[str] = []
+        for p in phrases:
+            norm = _normalise(p)
+            if norm in canonical:
+                keep.append(p)
+            elif fuzzy_threshold is not None:
+                # compute similarity to all ontology terms
+                vec = nlp(norm).vector
+                sims = (ont_embeds @ vec) / (
+                    np.linalg.norm(ont_embeds, axis=1) * np.linalg.norm(vec) + 1e-8
+                )
+                if sims.max() >= fuzzy_threshold:
+                    keep.append(p)
+        out.append(keep)
+    return out
+
+
+def replace_keywords_with_language(data: List[List[str]]) -> List[List[str]]:
+    """
+    Replaces isolated occurrences of 'r', 'c#', and 'c++' with their respective
+    'language' versions inside a nested list of strings, ensuring they are treated
+    correctly downstream.
+    """
+    pattern = r"(?<=\b)(r|go|c\+\+|c#)(?=\b)"
+    updated_data = []
+
+    for inner_list in data:
+        updated_inner = []
+        for item in inner_list:
+            new_item = re.sub(
+                pattern,
+                lambda match: f"{match.group(0)} language",
+                item,
+                flags=re.IGNORECASE,
+            )
+            updated_inner.append(new_item)
+        updated_data.append(updated_inner)
+
+    return updated_data
 
 
 def load_and_parse_requirements(
@@ -146,13 +368,59 @@ def filter_phrases_by_idf(
     return filtered
 
 
-def map_phrases_to_clusters(cleaned_phrases: List[List[str]]) -> pd.DataFrame:
-    """Aggregate cleaned phrases into a DataFrame of unique terms and frequencies."""
+def map_phrases_to_clusters(
+    cleaned_phrases: List[List[str]],
+    ontologies: Dict[str, List[str]],
+    fuzzy_threshold: float = 0.8,
+) -> pd.DataFrame:
+    """
+    Assign each unique cleaned phrase to an ontology cluster, with fallbacks:
+      1) Exact match on normalised form.
+      2) Substring match (e.g. 'correlation' in 'correlation analysis').
+      3) Fuzzy match by string similarity (SequenceMatcher) above threshold.
+
+    Returns a DataFrame with columns: term, freq, cluster.
+    """
+
+    # Build reverse lookup: normalised ontology term -> cluster
+    term_to_cluster: Dict[str, str] = {}
+    for cluster, terms in ontologies.items():
+        for t in terms:
+            term_to_cluster[_normalise(t)] = cluster
+
+    # Count phrase frequencies
     phrase_counts = Counter(p for phrases in cleaned_phrases for p in phrases)
-    skill_df = pd.DataFrame(
-        [(term, freq) for term, freq in phrase_counts.items()], columns=["term", "freq"]
-    )
-    return skill_df
+
+    records = []
+    for term, freq in phrase_counts.items():
+        norm = _normalise(term)
+        cluster = term_to_cluster.get(norm)
+
+        # 2) Substring fallback
+        if cluster is None:
+            for t_norm, cl in term_to_cluster.items():
+                if norm in t_norm or t_norm in norm:
+                    cluster = cl
+                    break
+
+        # 3) Fuzzy fallback
+        if cluster is None and fuzzy_threshold is not None:
+            best_ratio = 0.0
+            best_cluster = None
+            for t_norm, cl in term_to_cluster.items():
+                ratio = SequenceMatcher(None, norm, t_norm).ratio()
+                if ratio > best_ratio:
+                    best_ratio = ratio
+                    best_cluster = cl
+            if best_ratio >= fuzzy_threshold:
+                cluster = best_cluster
+
+        if cluster is None:
+            cluster = "Other"
+
+        records.append({"term": term, "freq": freq, "cluster": cluster})
+
+    return pd.DataFrame.from_records(records, columns=["term", "freq", "cluster"])
 
 
 def semantic_cluster_phrases(
@@ -196,49 +464,3 @@ def compute_cluster_demand(
             }
         )
     return pd.DataFrame(records)
-
-
-def plot_skill_frequency(skill_df: pd.DataFrame, top_n: int = 10) -> None:
-    """Plot bar chart of top N skills by number of postings."""
-    top = skill_df.sort_values("freq", ascending=False).head(top_n)
-    plt.figure(figsize=(8, 5))
-    plt.barh(top["term"][::-1], top["freq"][::-1])
-    plt.xlabel("Number of Postings")
-    plt.title(f"Top {top_n} Skills by Postings")
-    plt.tight_layout()
-    plt.show()
-
-
-def plot_cooccurrence_heatmap(
-    df: pd.DataFrame, key_terms: List[str], text_col: str = "req_text"
-) -> None:
-    """Display a heatmap of term co-occurrence for selected key_terms."""
-    cooc = pd.DataFrame(0, index=key_terms, columns=key_terms)
-    for text in df[text_col].dropna().str.lower():
-        present = [t for t in key_terms if t in text]
-        for i in present:
-            for j in present:
-                cooc.loc[i, j] += 1
-    plt.figure(figsize=(7, 6))
-    plt.imshow(cooc, aspect="equal")
-    plt.xticks(range(len(key_terms)), key_terms, rotation=90)
-    plt.yticks(range(len(key_terms)), key_terms)
-    plt.colorbar(label="Co-occurrence")
-    plt.title("Skill Co-occurrence Heatmap")
-    plt.tight_layout()
-    plt.show()
-
-
-def plot_demand_vs_supply(cluster_df: pd.DataFrame) -> None:
-    """Scatter plot of cluster demand vs. supply (avg. applicants)."""
-    plt.figure(figsize=(6, 6))
-    plt.scatter(cluster_df["demand"], cluster_df["avg_applicants"])
-    for _, row in cluster_df.iterrows():
-        plt.text(row["demand"], row["avg_applicants"], row["cluster"], fontsize=9)
-    plt.axhline(cluster_df["avg_applicants"].mean(), linestyle="--")
-    plt.axvline(cluster_df["demand"].mean(), linestyle="--")
-    plt.xlabel("Demand (Postings)")
-    plt.ylabel("Supply (Avg Applicants)")
-    plt.title("Cluster Demand vs. Supply")
-    plt.tight_layout()
-    plt.show()
