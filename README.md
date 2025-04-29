@@ -1,4 +1,4 @@
-# README
+# LinkedIn Job Analysis
 
 [![Build Status](https://github.com/ale-tom/linkedin-job-analysis/actions/workflows/ci.yml/badge.svg)](https://github.com/ale-tom/linkedin-job-analysis/actions)
 [![Coverage Status](https://coveralls.io/repos/github/ale-tom/linkedin-job-analysis/badge.svg?branch=main)](https://coveralls.io/github/ale-tom/linkedin-job-analysis?branch=main)
@@ -9,48 +9,164 @@
 
 ## Overview
 
-This project extracts job requirements from your saved LinkedIn jobs and runs text analysis to help you identify key skills and qualifications required to land a job. The analysis is carried out using a Jupyter notebook, and the repository adheres to best practices in code structure, testing, and documentation.
+This project automates the extraction of job requirements from your saved LinkedIn jobs and applies NLP-driven text analysis to uncover the most in-demand skills and qualifications. The results can guide your upskilling strategy, helping you focus on areas with high demand and low supply to improve your chances of landing targeted roles and/or negotiating higher compensation.
 
+The workflow is divided into two main parts:
 
-<img src="assets/clusters_freq.jpeg" alt="Skill clusters" width="1000"/>
+1. **Scraping**: Log into LinkedIn, iterate through all saved-job pages, and capture each posting’s requirements, applicant count, location, and posting date.
+2. **Analysis**: Use a Jupyter notebook to process the scraped data with NLP techniques (e.g., tokenization, named entity recognition, frequency analysis) to identify and visualise key skills trends.
 
+<img src="assets/clusters_freq.jpeg" alt="Skill clusters" width="800"/>
 
+## Features
 
-## Repository structure
-```
-linkedin-job-analysis/
-├── data/               # Raw and processed data files
-├── docs/               # Documentation 
-├── notebooks/          # Jupyter notebooks s
-│   └── analysis.ipynb
-├── src/                # Source code
-│   ├── __init__.py
-│   ├── scraper.py
-│   └── analysis.py
-├── tests/              # Unit tests (using pytest)
-│   └── test_scraper.py
-├── .github/            # GitHub configuration files 
-│   ├── workflows/
-│   │   └── ci.yml      # Continuous Integration (CI) configuration using GitHub Actions
-│   └── ISSUE_TEMPLATE.md
-├── LICENSE             # License file 
-├── README.md           # Project overview, badges, setup instructions, etc.
-├── requirements.txt    # Project dependencies
-└── setup.py            # Packaging configuration
-```
+- **Automated scraping** via Selenium and BeautifulSoup
+- **Secure credential management** with environment variables and `python-dotenv`
+- **Robust CI/CD** using GitHub Actions with pytest and flake8 linting
+- **Modular code structure** for easy maintenance and extension
+- **Comprehensive analysis** notebook showcasing word-frequency charts, word clouds, and entity recognition
 
-## Installation
+## Getting Started
+
+### Prerequisites
+
+- Python 3.11.5 or higher
+- Chrome browser and matching ChromeDriver
+- Git
+
+### Installation
 
 1. Clone the repository:
 
-   ```
-   git clone https://github.com/ale-tom/linkedin-job-analysis.git
+   ```bash
+   git clone https://github.com/<username>/linkedin-job-analysis.git
    cd linkedin-job-analysis
    ```
 
-2. Install the dependencies
-```pip install -r requirements.txt
-```
+2. Create and activate a virtual environment:
+
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # macOS/Linux
+   .\.venv\\Scripts\\activate  # Windows
+   ```
+
+3. Install dependencies:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Configure environment variables:
+
+   - Create a .env file in your project root:
+     ```bash
+     cp .env
+     ```
+   - Populate `.env` with your LinkedIn credentials:
+     ```dotenv
+     LINKEDIN_USERNAME=your_email_or_username
+     LINKEDIN_PASSWORD=your_password
+     ```
+   - Ensure two-factor authentication is disabled for this script.
+
 ## Usage
+
+### Scraping Saved Jobs
+
+Run the scraper to gather your saved-job requirements:
+
+```bash
+python src/scraper.py
 ```
+
+This will generate `linkedin_job_requirements.csv` in the project root, containing:
+
+- `job_url`
+- `requirements`
+- `applicant_count`
+- `location`
+- `date_posted`
+
+### Data Analysis Notebook
+
+Launch JupyterLab or Notebook:
+
+```bash
+jupyter lab
+# or
+jupyter notebook
 ```
+
+Open `notebooks/analysis.ipynb` to explore the data-processing and visualization workflow.
+
+## Project Structure
+
+```text
+linkedin-job-analysis/
+├── .github/                 # CI workflows and issue templates
+├── data/                    # Raw and processed CSVs
+├── notebooks/               # Jupyter notebooks for EDA and reporting
+│   └── analysis.ipynb
+├── src/                     # Python modules
+│   ├── scraper.py           # LinkedIn scraping logic
+│   └── analysis.py          # Helper functions for NLP processing
+├── tests/                   # pytest unit tests
+│   └── test_scraper.py
+├── assets/
+│   └── clusters_freq.jpeg   # Example of output plot
+├── .flake8                  # Flake8 configuration
+├── requirements.txt         # Python dependencies
+├── setup.py / pyproject.toml# Packaging info (optional)
+└── README.md                # Project documentation
+```
+
+## Makefile
+
+This repository includes a **Makefile** to automate common tasks. Available targets:
+
+```bash
+# Create a virtual environment (default Python from PYTHON_BIN)
+make venv
+
+# Install dependencies and set up the environment
+make install
+
+# Remove the virtual environment directory
+make clean
+
+# Run the main application script
+make run
+
+# Execute the test suite via pytest
+make test
+
+# Show help for all Makefile targets
+make help
+```
+
+You can override the default Python binary when creating the virtual environment:
+
+```bash
+make venv PYTHON_BIN=/path/to/python3.9
+```
+
+## CI/CD
+
+The GitHub Actions workflow (`.github/workflows/ci.yml`) runs on every push and pull request to the `master` branch, performing:
+
+- Dependency installation
+- Flake8 linting (`flake8 .`)
+- Unit testing (`pytest --maxfail=1 --disable-warnings -q`)
+
+## Contributing
+
+Contributions are welcome! Please fork the repository and submit a pull request. Ensure that:
+
+- New features include tests
+- Code passes flake8 and pytest checks
+- Documentation is updated in `README.md`
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
