@@ -11,6 +11,11 @@
 
 This project extracts job requirements from your saved LinkedIn jobs and runs text analysis to help you identify key skills and qualifications required to land a job. The analysis is carried out using a Jupyter notebook, and the repository adheres to best practices in code structure, testing, and documentation.
 
+
+<img src="assets/clusters_freq.jpeg" alt="Skill clusters" width="1000"/>
+
+
+
 ## Repository structure
 ```
 linkedin-job-analysis/
