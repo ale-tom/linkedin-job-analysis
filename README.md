@@ -1,3 +1,8 @@
+
+<p align="center">
+<img src="assets/wordcloud.png" alt="Skill clusters" width="200">
+</p>
+
 # LinkedIn Job Analysis
 
 [![Build Status](https://github.com/ale-tom/linkedin-job-analysis/actions/workflows/ci.yml/badge.svg)](https://github.com/ale-tom/linkedin-job-analysis/actions)
