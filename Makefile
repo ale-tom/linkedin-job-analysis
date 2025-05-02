@@ -42,7 +42,7 @@ venv:
 # Install project dependencies from requirements.txt.
 install: venv
 	@echo "Activating virtual environment and installing dependencies..."
-	. $(VENV_DIR)/bin/activate && pip install -r requirements.txt
+	. $(VENV_DIR)/bin/activate && pip install -r requirements.txt && pip install -e . && python -m spacy download en_core_web_md
 
 # Remove the virtual environment folder.
 clean:
