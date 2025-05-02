@@ -209,7 +209,7 @@ def filter_by_ontologies(
     fuzzy_threshold: Optional[float] = None,
 ) -> List[List[str]]:
     """
-    Keep only those phrases whose normalized form appears in your ontologies (exactly),
+    Keep only those phrases whose normalised form appears in your ontologies (exactly),
     or (if fuzzy_threshold is set) whose embedding similarity to any ontology term
     exceeds that threshold.
     """
@@ -437,30 +437,3 @@ def semantic_cluster_phrases(
     skill_df = skill_df.copy()
     skill_df["semantic_cluster"] = labels
     return skill_df
-
-
-def compute_cluster_demand(
-    df: pd.DataFrame,
-    skill_df: pd.DataFrame,
-    text_col: str = "req_text",
-    applicants_col: str = "num_applicants",
-    use_semantic: bool = True,
-) -> pd.DataFrame:
-    """Compute demand and supply metrics per semantic cluster."""
-    group_col = "semantic_cluster"
-    records = []
-    for cluster, group in skill_df.groupby(group_col):
-        pattern = "|".join(re.escape(t) for t in group["term"])
-        mask = df[text_col].str.contains(pattern, regex=True, na=False)
-        postings = df[mask]
-        if postings.empty:
-            continue
-        records.append(
-            {
-                "cluster": int(cluster),
-                "demand": int(mask.sum()),
-                "avg_applicants": float(postings[applicants_col].mean()),
-                "ratio": int(mask.sum()) / postings[applicants_col].mean(),
-            }
-        )
-    return pd.DataFrame(records)

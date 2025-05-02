@@ -19,9 +19,12 @@ This project automates the extraction of job requirements from your saved Linked
 The workflow is divided into two main parts:
 
 1. **Scraping**: Log into LinkedIn, iterate through all saved-job pages, and capture each posting’s requirements, applicant count, location, and posting date.
-2. **Analysis**: Use a Jupyter notebook to process the scraped data with NLP techniques (e.g., tokenization, named entity recognition, frequency analysis) to identify and visualise key skills trends.
+2. **Analysis**: Analysis of the scraped data using NPMI and hierarchical clustering (with bootstrap validation) to uncover coherent data‑science skill groups and an entropy‑based transversality metric to highlight the most cross‑domain tools. Results guide upskilling priorities by revealing which competencies bridge multiple job archetypes in the U.K. market.
+
 
 <img src="assets/clusters_freq.jpeg" alt="Skill clusters" width="800"/>
+<img src="assets/clusters.png" alt="Skill clusters" width="800"/>
+<img src="assets/trasversal_skills.png" alt="Skill clusters" width="800"/>
 
 ## Features
 
