@@ -3,7 +3,7 @@
 <img src="assets/wordcloud.png" alt="Skill clusters" width="200">
 </p>
 
-# LinkedIn Job Analysis
+# LinkedIn Skill Profiler
 
 [![Build Status](https://github.com/ale-tom/linkedin-job-analysis/actions/workflows/ci.yml/badge.svg)](https://github.com/ale-tom/linkedin-job-analysis/actions)
 [![Coverage Status](https://coveralls.io/repos/github/ale-tom/linkedin-job-analysis/badge.svg?branch=main)](https://coveralls.io/github/ale-tom/linkedin-job-analysis?branch=main)
