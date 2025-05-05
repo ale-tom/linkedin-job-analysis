@@ -14,12 +14,12 @@
 
 ## Overview
 
-This project automates the extraction of job requirements from your saved LinkedIn jobs and applies NLP-driven text analysis to uncover the most in-demand skills and qualifications. The results can guide your upskilling strategy, helping you focus on areas with high demand and low supply to improve your chances of landing targeted roles and/or negotiating higher compensation.
+This project automates the extraction of job requirements from your saved LinkedIn jobs and applies NLP-driven text analysis, hierarchical clustering and entropy-based transverasility analysis to uncover both core skill domains and the most versatile, cross‑domain tools. These insights can guide your upskilling strategy, helping you focus on high‑leverage competencies, that is those that bridge multiple job archetypes, to boost your employability and negotiation power.
 
 The workflow is divided into two main parts:
 
 1. **Scraping**: Log into LinkedIn, iterate through all saved-job pages, and capture each posting’s requirements, applicant count, location, and posting date.
-2. **Analysis**: Analysis of the scraped data using NPMI and hierarchical clustering (with bootstrap validation) to uncover coherent data‑science skill groups and an entropy‑based transversality metric to highlight the most cross‑domain tools. Results guide upskilling priorities by revealing which competencies bridge multiple job archetypes in the U.K. market.
+2. **Analysis**: Analysis of the scraped data using NPMI and hierarchical clustering (with bootstrap validation) to uncover coherent data‑science skill groups and an entropy‑based transversality metric to highlight the most cross‑domain tools. Results guide upskilling priorities by revealing which competencies bridge multiple job archetypes (note that the reported analysis focusses in the Data Science sector within the U.K. market.)
 
 
 <img src="assets/clusters_freq.jpeg" alt="Skill clusters" width="800"/>
